@@ -19,8 +19,9 @@ export async function GET() {
         length: deepseekKey?.length || 0,
         first4: deepseekKey?.slice(0, 4) || 'NOT_SET',
         last4: deepseekKey?.slice(-4) || 'NOT_SET',
-        expectedLength: 41,
-        isCorrectLength: deepseekKey?.length === 41,
+        expectedLength: '35 or 41',
+        isCorrectLength: deepseekKey?.length === 35 || deepseekKey?.length === 41,
+        isValid: deepseekKey?.startsWith('sk-') && deepseekKey.length >= 30,
       },
       GLM_API_KEY: {
         exists: !!glmKey,
