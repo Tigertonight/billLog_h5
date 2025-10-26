@@ -4,6 +4,16 @@ const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY
 const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions'
 
 export async function POST(request: NextRequest) {
+  // 详细的环境变量调试日志
+  console.log('=== DeepSeek API Environment Check ===')
+  console.log('Timestamp:', new Date().toISOString())
+  console.log('DEEPSEEK_API_KEY exists:', !!DEEPSEEK_API_KEY)
+  console.log('DEEPSEEK_API_KEY length:', DEEPSEEK_API_KEY?.length || 0)
+  console.log('DEEPSEEK_API_KEY first 4 chars:', DEEPSEEK_API_KEY?.slice(0, 4) || 'NOT_SET')
+  console.log('DEEPSEEK_API_KEY last 4 chars:', DEEPSEEK_API_KEY?.slice(-4) || 'NOT_SET')
+  console.log('Expected length: 41, Actual length:', DEEPSEEK_API_KEY?.length || 0)
+  console.log('=====================================')
+
   try {
     const { prompt } = await request.json()
 

@@ -8,6 +8,12 @@ frontend:
         - npm config set registry https://registry.npmmirror.com/
         - npm config set strict-ssl false
         - npm cache clean --force
+        - echo "=== Checking Environment Variables ==="
+        - echo "DEEPSEEK_API_KEY length:" ${#DEEPSEEK_API_KEY}
+        - echo "DEEPSEEK_API_KEY last 4 chars:" ${DEEPSEEK_API_KEY: -4}
+        - echo "GLM_API_KEY exists:" $([ -n "$GLM_API_KEY" ] && echo "YES" || echo "NO")
+        - echo "SUPABASE_URL exists:" $([ -n "$NEXT_PUBLIC_SUPABASE_URL" ] && echo "YES" || echo "NO")
+        - echo "======================================"
         - npm ci --registry=https://registry.npmmirror.com/
     build:
       commands:
