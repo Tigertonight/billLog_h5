@@ -20,7 +20,7 @@ export function ImageUpload({
 }: ImageUploadProps) {
   const [isUploading, setIsUploading] = useState(false)
   const [preview, setPreview] = useState<string | null>(
-    currentImage ? `/images/transactions/${currentImage}` : null
+    currentImage || null
   )
   const [fileType, setFileType] = useState<string>('')
   const [isDragging, setIsDragging] = useState(false)
@@ -31,7 +31,7 @@ export function ImageUpload({
   // 监听currentImage变化，同步更新preview
   useEffect(() => {
     if (currentImage) {
-      setPreview(`/images/transactions/${currentImage}`)
+      setPreview(currentImage)
     } else {
       // 当currentImage被清空时，重置所有状态
       setPreview(null)
@@ -195,7 +195,7 @@ export function ImageUpload({
       }
       return (
         <Image
-          src={`/images/transactions/${currentImage}`}
+          src={currentImage}
           alt="附件"
           fill
           className="object-cover"
@@ -211,7 +211,7 @@ export function ImageUpload({
       return preview
     }
     if (currentImage && !currentImage.endsWith('.pdf')) {
-      return `/images/transactions/${currentImage}`
+      return currentImage
     }
     return null
   }

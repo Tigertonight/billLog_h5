@@ -176,7 +176,7 @@ export default function TimelinePage() {
                                       </div>
                                     ) : (
                                       <Image
-                                        src={`/images/transactions/${transaction.image}`}
+                                        src={transaction.image}
                                         alt="附件"
                                         fill
                                         className="object-cover"
