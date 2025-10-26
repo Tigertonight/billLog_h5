@@ -159,7 +159,8 @@ ${profile.note ? `- 补充说明：${profile.note}` : ''}
  * @returns 解析结果，未识别的字段返回null
  */
 export async function parseReceiptImageGLM(imageBase64: string): Promise<ReceiptParseResult> {
-  const apiKey = process.env.GLM_API_KEY
+  // 尝试从两个可能的环境变量读取
+  const apiKey = process.env.GLM_API_KEY || process.env.NEXT_PUBLIC_GLM_API_KEY
   if (!apiKey) {
     throw new Error('GLM_API_KEY is not configured')
   }

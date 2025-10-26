@@ -94,7 +94,8 @@ export function ImageUpload({
       }
 
       const data = await response.json()
-      onImageUpload(data.filename, base64Data)
+      // 使用 Supabase 返回的完整 URL，而不是文件名
+      onImageUpload(data.url, base64Data)
     } catch (err) {
       console.error('Upload error:', err)
       setError(err instanceof Error ? err.message : '上传失败，请重试')
