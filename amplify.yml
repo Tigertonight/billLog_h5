@@ -9,10 +9,11 @@ frontend:
         - npm config set strict-ssl false
         - npm cache clean --force
         - echo "=== Checking Environment Variables ==="
-        - echo "DEEPSEEK_API_KEY length:" ${#DEEPSEEK_API_KEY}
-        - echo "DEEPSEEK_API_KEY last 4 chars:" ${DEEPSEEK_API_KEY: -4}
-        - echo "GLM_API_KEY exists:" $([ -n "$GLM_API_KEY" ] && echo "YES" || echo "NO")
-        - echo "SUPABASE_URL exists:" $([ -n "$NEXT_PUBLIC_SUPABASE_URL" ] && echo "YES" || echo "NO")
+        - 'echo "DEEPSEEK_API_KEY length: ${#DEEPSEEK_API_KEY}"'
+        - 'echo "DEEPSEEK_API_KEY last 4 chars: ${DEEPSEEK_API_KEY: -4}"'
+        - 'if [ -n "$DEEPSEEK_API_KEY" ]; then echo "DEEPSEEK_API_KEY exists: YES"; else echo "DEEPSEEK_API_KEY exists: NO"; fi'
+        - 'if [ -n "$GLM_API_KEY" ]; then echo "GLM_API_KEY exists: YES"; else echo "GLM_API_KEY exists: NO"; fi'
+        - 'if [ -n "$NEXT_PUBLIC_SUPABASE_URL" ]; then echo "SUPABASE_URL exists: YES"; else echo "SUPABASE_URL exists: NO"; fi'
         - echo "======================================"
         - npm ci --registry=https://registry.npmmirror.com/
     build:
