@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 
-// 尝试从两个可能的环境变量读取
-const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || process.env.NEXT_PUBLIC_DEEPSEEK_API_KEY
+// 从服务端环境变量读取（通过 SSM）
+const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY
 const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions'
 
 // AWS Amplify 不支持 SSE 流式响应，使用环境变量控制

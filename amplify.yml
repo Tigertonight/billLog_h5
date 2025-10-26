@@ -8,14 +8,13 @@ frontend:
         - npm config set registry https://registry.npmmirror.com/
         - npm config set strict-ssl false
         - npm cache clean --force
-        - echo "=== Checking Environment Variables ==="
+        - echo "=== Checking Environment Variables (SSM) ==="
         - 'echo "DEEPSEEK_API_KEY length: ${#DEEPSEEK_API_KEY}"'
-        - 'echo "NEXT_PUBLIC_DEEPSEEK_API_KEY length: ${#NEXT_PUBLIC_DEEPSEEK_API_KEY}"'
-        - 'if [ -n "$DEEPSEEK_API_KEY" ]; then echo "DEEPSEEK_API_KEY exists: YES"; else echo "DEEPSEEK_API_KEY exists: NO"; fi'
-        - 'if [ -n "$NEXT_PUBLIC_DEEPSEEK_API_KEY" ]; then echo "NEXT_PUBLIC_DEEPSEEK_API_KEY exists: YES"; else echo "NEXT_PUBLIC_DEEPSEEK_API_KEY exists: NO"; fi'
-        - 'if [ -n "$GLM_API_KEY" ]; then echo "GLM_API_KEY exists: YES"; else echo "GLM_API_KEY exists: NO"; fi'
-        - 'if [ -n "$NEXT_PUBLIC_SUPABASE_URL" ]; then echo "SUPABASE_URL exists: YES"; else echo "SUPABASE_URL exists: NO"; fi'
-        - echo "======================================"
+        - 'echo "DEEPSEEK_API_KEY last 4 chars: ${DEEPSEEK_API_KEY: -4}"'
+        - 'if [ -n "$DEEPSEEK_API_KEY" ]; then echo "DEEPSEEK_API_KEY: ✓ Loaded"; else echo "DEEPSEEK_API_KEY: ✗ Missing"; fi'
+        - 'if [ -n "$GLM_API_KEY" ]; then echo "GLM_API_KEY: ✓ Loaded"; else echo "GLM_API_KEY: ✗ Missing"; fi'
+        - 'if [ -n "$NEXT_PUBLIC_SUPABASE_URL" ]; then echo "SUPABASE_URL: ✓ Loaded"; else echo "SUPABASE_URL: ✗ Missing"; fi'
+        - echo "============================================"
         - npm ci --registry=https://registry.npmmirror.com/
     build:
       commands:
