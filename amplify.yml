@@ -3,7 +3,9 @@ frontend:
   phases:
     preBuild:
       commands:
-        - npm ci
+        - npm config set registry https://registry.npmjs.org/
+        - npm config set strict-ssl false
+        - npm ci --registry=https://registry.npmjs.org/
     build:
       commands:
         - npm run build
