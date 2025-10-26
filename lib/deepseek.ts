@@ -12,7 +12,7 @@ export interface ReceiptParseResult {
 }
 
 /**
- * 调用DeepSeek API获取AI建议（流式）
+ * 调用DeepSeek API获取AI建议（支持流式和非流式）
  */
 async function callDeepSeekAPIStream(
   prompt: string,
@@ -31,37 +31,58 @@ async function callDeepSeekAPIStream(
       throw new Error('Failed to get AI response')
     }
 
-    const reader = response.body?.getReader()
-    if (!reader) {
-      throw new Error('No response body')
-    }
+    const contentType = response.headers.get('content-type')
+    
+    // 检查是否是流式响应
+    if (contentType?.includes('text/event-stream')) {
+      // 流式处理（本地开发环境）
+      const reader = response.body?.getReader()
+      if (!reader) {
+        throw new Error('No response body')
+      }
 
-    const decoder = new TextDecoder()
-    let buffer = ''
+      const decoder = new TextDecoder()
+      let buffer = ''
 
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
 
-      buffer += decoder.decode(value, { stream: true })
-      const lines = buffer.split('\n')
-      buffer = lines.pop() || ''
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
 
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          const data = line.slice(6)
-          if (data === '[DONE]') {
-            return
-          }
-
-          try {
-            const json = JSON.parse(data)
-            if (json.content) {
-              onChunk(json.content)
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6)
+            if (data === '[DONE]') {
+              return
             }
-          } catch (e) {
-            console.error('Error parsing SSE data:', e)
+
+            try {
+              const json = JSON.parse(data)
+              if (json.content) {
+                onChunk(json.content)
+              }
+            } catch (e) {
+              console.error('Error parsing SSE data:', e)
+            }
           }
+        }
+      }
+    } else {
+      // 非流式处理（生产环境 - AWS Amplify）
+      // 模拟流式效果：逐字显示
+      const data = await response.json()
+      const content = data.content || ''
+      
+      // 将内容按字符分割，模拟打字机效果
+      const chars = content.split('')
+      for (let i = 0; i < chars.length; i++) {
+        onChunk(chars[i])
+        // 每 2 个字符添加一个小延迟，模拟流式效果
+        if (i % 2 === 0) {
+          await new Promise(resolve => setTimeout(resolve, 10))
         }
       }
     }

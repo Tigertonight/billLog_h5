@@ -4,6 +4,11 @@ import { NextRequest } from 'next/server'
 const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || process.env.NEXT_PUBLIC_DEEPSEEK_API_KEY
 const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions'
 
+// AWS Amplify 不支持 SSE 流式响应，使用环境变量控制
+// 本地开发：ENABLE_STREAMING=true
+// 生产环境（Amplify）：不设置或 ENABLE_STREAMING=false
+const ENABLE_STREAMING = process.env.ENABLE_STREAMING === 'true'
+
 export async function POST(request: NextRequest) {
   // 详细的环境变量调试日志
   console.log('=== DeepSeek API Environment Check ===')
@@ -13,6 +18,7 @@ export async function POST(request: NextRequest) {
   console.log('DEEPSEEK_API_KEY first 4 chars:', DEEPSEEK_API_KEY?.slice(0, 4) || 'NOT_SET')
   console.log('DEEPSEEK_API_KEY last 4 chars:', DEEPSEEK_API_KEY?.slice(-4) || 'NOT_SET')
   console.log('Expected length: 41, Actual length:', DEEPSEEK_API_KEY?.length || 0)
+  console.log('Streaming enabled:', ENABLE_STREAMING)
   console.log('=====================================')
 
   try {
@@ -58,7 +64,7 @@ export async function POST(request: NextRequest) {
         ],
         temperature: 0.7,
         max_tokens: 2000,
-        stream: true, // 启用流式输出
+        stream: ENABLE_STREAMING, // 根据环境变量决定是否启用流式输出
       }),
     })
 
@@ -78,61 +84,76 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 创建一个可读流用于SSE
-    const encoder = new TextEncoder()
-    const stream = new ReadableStream({
-      async start(controller) {
-        const reader = response.body?.getReader()
-        if (!reader) {
-          controller.close()
-          return
-        }
+    // 根据是否启用流式输出返回不同格式
+    if (ENABLE_STREAMING) {
+      // 流式响应（本地开发）
+      const encoder = new TextEncoder()
+      const stream = new ReadableStream({
+        async start(controller) {
+          const reader = response.body?.getReader()
+          if (!reader) {
+            controller.close()
+            return
+          }
 
-        const decoder = new TextDecoder()
-        try {
-          while (true) {
-            const { done, value } = await reader.read()
-            if (done) break
+          const decoder = new TextDecoder()
+          try {
+            while (true) {
+              const { done, value } = await reader.read()
+              if (done) break
 
-            const chunk = decoder.decode(value, { stream: true })
-            const lines = chunk.split('\n').filter(line => line.trim() !== '')
+              const chunk = decoder.decode(value, { stream: true })
+              const lines = chunk.split('\n').filter(line => line.trim() !== '')
 
-            for (const line of lines) {
-              if (line.startsWith('data: ')) {
-                const data = line.slice(6)
-                if (data === '[DONE]') {
-                  controller.enqueue(encoder.encode('data: [DONE]\n\n'))
-                  continue
-                }
-
-                try {
-                  const json = JSON.parse(data)
-                  const content = json.choices?.[0]?.delta?.content
-                  if (content) {
-                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`))
+              for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                  const data = line.slice(6)
+                  if (data === '[DONE]') {
+                    controller.enqueue(encoder.encode('data: [DONE]\n\n'))
+                    continue
                   }
-                } catch (e) {
-                  console.error('Error parsing SSE data:', e)
+
+                  try {
+                    const json = JSON.parse(data)
+                    const content = json.choices?.[0]?.delta?.content
+                    if (content) {
+                      controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`))
+                    }
+                  } catch (e) {
+                    console.error('Error parsing SSE data:', e)
+                  }
                 }
               }
             }
+          } catch (error) {
+            console.error('Error reading stream:', error)
+            controller.error(error)
+          } finally {
+            controller.close()
           }
-        } catch (error) {
-          console.error('Error reading stream:', error)
-          controller.error(error)
-        } finally {
-          controller.close()
-        }
-      },
-    })
+        },
+      })
 
-    return new Response(stream, {
-      headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-      },
-    })
+      return new Response(stream, {
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+        },
+      })
+    } else {
+      // 非流式响应（AWS Amplify 生产环境）
+      const data = await response.json()
+      const content = data.choices?.[0]?.message?.content || ''
+
+      return new Response(
+        JSON.stringify({ content }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        }
+      )
+    }
   } catch (error) {
     console.error('Error calling DeepSeek API:', error)
     return new Response(
