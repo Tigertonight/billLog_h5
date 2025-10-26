@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 
-const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY
+// 尝试从两个可能的环境变量读取
+const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || process.env.NEXT_PUBLIC_DEEPSEEK_API_KEY
 const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions'
 
 export async function POST(request: NextRequest) {
