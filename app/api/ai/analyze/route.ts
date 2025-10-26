@@ -47,15 +47,19 @@ export async function POST(request: NextRequest) {
         ],
         temperature: 0.7,
         max_tokens: 2000,
-        stream: true, // 启用流式输出
+        stream: false, // 暂时禁用流式输出
       }),
     })
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error('DeepSeek API error:', errorText)
+      console.error('DeepSeek API error:', response.status, errorText)
       return new Response(
-        JSON.stringify({ error: 'DeepSeek API request failed' }),
+        JSON.stringify({ 
+          error: 'DeepSeek API request failed',
+          status: response.status,
+          details: errorText 
+        }),
         { 
           status: 500,
           headers: { 'Content-Type': 'application/json' }
@@ -63,61 +67,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 创建一个可读流用于SSE
-    const encoder = new TextEncoder()
-    const stream = new ReadableStream({
-      async start(controller) {
-        const reader = response.body?.getReader()
-        if (!reader) {
-          controller.close()
-          return
-        }
+    const data = await response.json()
+    const content = data.choices?.[0]?.message?.content || ''
 
-        const decoder = new TextDecoder()
-        try {
-          while (true) {
-            const { done, value } = await reader.read()
-            if (done) break
-
-            const chunk = decoder.decode(value, { stream: true })
-            const lines = chunk.split('\n').filter(line => line.trim() !== '')
-
-            for (const line of lines) {
-              if (line.startsWith('data: ')) {
-                const data = line.slice(6)
-                if (data === '[DONE]') {
-                  controller.enqueue(encoder.encode('data: [DONE]\n\n'))
-                  continue
-                }
-
-                try {
-                  const json = JSON.parse(data)
-                  const content = json.choices?.[0]?.delta?.content
-                  if (content) {
-                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`))
-                  }
-                } catch (e) {
-                  console.error('Error parsing SSE data:', e)
-                }
-              }
-            }
-          }
-        } catch (error) {
-          console.error('Error reading stream:', error)
-          controller.error(error)
-        } finally {
-          controller.close()
-        }
-      },
-    })
-
-    return new Response(stream, {
-      headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-      },
-    })
+    return new Response(
+      JSON.stringify({ content }),
+      {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      }
+    )
   } catch (error) {
     console.error('Error calling DeepSeek API:', error)
     return new Response(

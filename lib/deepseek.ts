@@ -12,7 +12,7 @@ export interface ReceiptParseResult {
 }
 
 /**
- * 调用DeepSeek API获取AI建议（流式）
+ * 调用DeepSeek API获取AI建议（非流式）
  */
 async function callDeepSeekAPIStream(
   prompt: string,
@@ -28,42 +28,16 @@ async function callDeepSeekAPIStream(
     })
 
     if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      console.error('API error:', errorData)
       throw new Error('Failed to get AI response')
     }
 
-    const reader = response.body?.getReader()
-    if (!reader) {
-      throw new Error('No response body')
-    }
-
-    const decoder = new TextDecoder()
-    let buffer = ''
-
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-
-      buffer += decoder.decode(value, { stream: true })
-      const lines = buffer.split('\n')
-      buffer = lines.pop() || ''
-
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          const data = line.slice(6)
-          if (data === '[DONE]') {
-            return
-          }
-
-          try {
-            const json = JSON.parse(data)
-            if (json.content) {
-              onChunk(json.content)
-            }
-          } catch (e) {
-            console.error('Error parsing SSE data:', e)
-          }
-        }
-      }
+    const data = await response.json()
+    if (data.content) {
+      onChunk(data.content)
+    } else {
+      throw new Error('No content in response')
     }
   } catch (error) {
     console.error('Error calling DeepSeek API:', error)
