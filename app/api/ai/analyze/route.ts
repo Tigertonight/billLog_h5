@@ -13,26 +13,45 @@ export async function POST(request: NextRequest) {
   // 详细的环境变量调试日志
   console.log('=== DeepSeek API Environment Check ===')
   console.log('Timestamp:', new Date().toISOString())
+  console.log('DEEPSEEK_API_KEY (const):', DEEPSEEK_API_KEY)
+  console.log('process.env.DEEPSEEK_API_KEY:', process.env.DEEPSEEK_API_KEY)
+  console.log('All env keys:', Object.keys(process.env).filter(k => k.includes('DEEP') || k.includes('GLM')))
   console.log('DEEPSEEK_API_KEY exists:', !!DEEPSEEK_API_KEY)
   console.log('DEEPSEEK_API_KEY length:', DEEPSEEK_API_KEY?.length || 0)
   console.log('DEEPSEEK_API_KEY first 4 chars:', DEEPSEEK_API_KEY?.slice(0, 4) || 'NOT_SET')
   console.log('DEEPSEEK_API_KEY last 4 chars:', DEEPSEEK_API_KEY?.slice(-4) || 'NOT_SET')
-  console.log('Expected length: 41, Actual length:', DEEPSEEK_API_KEY?.length || 0)
   console.log('Streaming enabled:', ENABLE_STREAMING)
   console.log('=====================================')
 
   try {
     const { prompt } = await request.json()
 
-    if (!DEEPSEEK_API_KEY) {
+    // 运行时重新读取环境变量
+    const runtimeKey = process.env.DEEPSEEK_API_KEY
+    const apiKey = DEEPSEEK_API_KEY || runtimeKey
+    
+    console.log('Runtime key exists:', !!runtimeKey)
+    console.log('Final API key exists:', !!apiKey)
+
+    if (!apiKey) {
       return new Response(
-        JSON.stringify({ error: 'DeepSeek API key not configured' }),
+        JSON.stringify({ 
+          error: 'DeepSeek API key not configured',
+          debug: {
+            constKeyExists: !!DEEPSEEK_API_KEY,
+            runtimeKeyExists: !!runtimeKey,
+            envKeys: Object.keys(process.env).filter(k => k.includes('DEEP'))
+          }
+        }),
         { 
           status: 500,
           headers: { 'Content-Type': 'application/json' }
         }
       )
     }
+    
+    // 使用运行时读取的 key
+    const DEEPSEEK_API_URL_RUNTIME = 'https://api.deepseek.com/v1/chat/completions'
 
     if (!prompt) {
       return new Response(
@@ -44,11 +63,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const response = await fetch(DEEPSEEK_API_URL, {
+    const response = await fetch(DEEPSEEK_API_URL_RUNTIME, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
+        'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
         model: 'deepseek-chat',

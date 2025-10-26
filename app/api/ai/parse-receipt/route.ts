@@ -3,6 +3,12 @@ import { parseReceiptImageGLM } from '@/lib/deepseek'
 
 export async function POST(request: NextRequest) {
   try {
+    // 运行时环境变量检查
+    console.log('=== GLM API Environment Check ===')
+    console.log('GLM_API_KEY exists:', !!process.env.GLM_API_KEY)
+    console.log('GLM_API_KEY length:', process.env.GLM_API_KEY?.length || 0)
+    console.log('==================================')
+    
     const { imageBase64 } = await request.json()
 
     if (!imageBase64) {
