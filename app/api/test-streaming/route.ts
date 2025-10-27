@@ -8,7 +8,6 @@ export async function GET(request: NextRequest) {
       ENABLE_STREAMING: enableStreaming,
       ENABLE_STREAMING_TYPE: typeof enableStreaming,
       ENABLE_STREAMING_EQUALS_TRUE: enableStreaming === 'true',
-      ENABLE_STREAMING_BOOLEAN: enableStreaming === true,
       ALL_ENV_KEYS: Object.keys(process.env).filter(k => k.includes('STREAMING'))
     }, null, 2),
     {
