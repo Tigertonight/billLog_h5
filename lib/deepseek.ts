@@ -35,7 +35,8 @@ async function callDeepSeekAPIStream(
     
     // 检查是否是流式响应
     if (contentType?.includes('text/event-stream')) {
-      // 流式处理（本地开发环境）
+      // 真正的流式响应处理（Vercel 环境）
+      console.log('🚀 使用真正的 SSE 流式响应')
       const reader = response.body?.getReader()
       if (!reader) {
         throw new Error('No response body')
@@ -54,8 +55,9 @@ async function callDeepSeekAPIStream(
 
         for (const line of lines) {
           if (line.startsWith('data: ')) {
-            const data = line.slice(6)
+            const data = line.slice(6).trim()
             if (data === '[DONE]') {
+              console.log('✅ 流式响应完成')
               return
             }
 
@@ -65,14 +67,14 @@ async function callDeepSeekAPIStream(
                 onChunk(json.content)
               }
             } catch (e) {
-              console.error('Error parsing SSE data:', e)
+              console.error('Error parsing SSE data:', e, 'Data:', data)
             }
           }
         }
       }
-    } else {
-      // 非流式处理（生产环境 - AWS Amplify）
-      // 模拟流式效果：逐字显示
+    } else if (contentType?.includes('application/json')) {
+      // 非流式 JSON 响应（降级方案）
+      console.warn('⚠️ 收到非流式响应，请检查 ENABLE_STREAMING 环境变量是否设置为 true')
       const data = await response.json()
       const content = data.content || ''
       
@@ -85,6 +87,8 @@ async function callDeepSeekAPIStream(
           await new Promise(resolve => setTimeout(resolve, 10))
         }
       }
+    } else {
+      throw new Error(`Unexpected content-type: ${contentType}`)
     }
   } catch (error) {
     console.error('Error calling DeepSeek API:', error)

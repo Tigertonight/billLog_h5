@@ -1,69 +1,39 @@
 import { NextRequest } from 'next/server'
 
-// 从服务端环境变量读取（通过 SSM）
+// 从服务端环境变量读取
 const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY
 const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions'
 
-// AWS Amplify 不支持 SSE 流式响应，使用环境变量控制
-// 本地开发：ENABLE_STREAMING=true
-// 生产环境（Amplify）：不设置或 ENABLE_STREAMING=false
+// Vercel 完美支持 SSE 流式响应
 const ENABLE_STREAMING = process.env.ENABLE_STREAMING === 'true'
 
 export async function POST(request: NextRequest) {
-  // 详细的环境变量调试日志
-  console.log('=== DeepSeek API Environment Check ===')
-  console.log('Timestamp:', new Date().toISOString())
-  console.log('DEEPSEEK_API_KEY (const):', DEEPSEEK_API_KEY)
-  console.log('process.env.DEEPSEEK_API_KEY:', process.env.DEEPSEEK_API_KEY)
-  console.log('All env keys:', Object.keys(process.env).filter(k => k.includes('DEEP') || k.includes('GLM')))
-  console.log('DEEPSEEK_API_KEY exists:', !!DEEPSEEK_API_KEY)
-  console.log('DEEPSEEK_API_KEY length:', DEEPSEEK_API_KEY?.length || 0)
-  console.log('DEEPSEEK_API_KEY first 4 chars:', DEEPSEEK_API_KEY?.slice(0, 4) || 'NOT_SET')
-  console.log('DEEPSEEK_API_KEY last 4 chars:', DEEPSEEK_API_KEY?.slice(-4) || 'NOT_SET')
-  console.log('Streaming enabled:', ENABLE_STREAMING)
-  console.log('=====================================')
+  console.log('🤖 AI 分析请求 -', new Date().toISOString())
+  console.log('📡 流式响应:', ENABLE_STREAMING ? '✅ 已启用' : '❌ 已禁用')
 
   try {
     const { prompt } = await request.json()
 
-    // 运行时重新读取环境变量
-    const runtimeKey = process.env.DEEPSEEK_API_KEY
-    const apiKey = DEEPSEEK_API_KEY || runtimeKey
+    const apiKey = DEEPSEEK_API_KEY
     
-    console.log('Runtime key exists:', !!runtimeKey)
-    console.log('Final API key exists:', !!apiKey)
-
     if (!apiKey) {
+      console.error('❌ DEEPSEEK_API_KEY 未配置')
       return new Response(
-        JSON.stringify({ 
-          error: 'DeepSeek API key not configured',
-          debug: {
-            constKeyExists: !!DEEPSEEK_API_KEY,
-            runtimeKeyExists: !!runtimeKey,
-            envKeys: Object.keys(process.env).filter(k => k.includes('DEEP'))
-          }
-        }),
-        { 
-          status: 500,
-          headers: { 'Content-Type': 'application/json' }
-        }
+        JSON.stringify({ error: 'DeepSeek API key not configured' }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
       )
     }
-    
-    // 使用运行时读取的 key
-    const DEEPSEEK_API_URL_RUNTIME = 'https://api.deepseek.com/v1/chat/completions'
 
     if (!prompt) {
+      console.error('❌ Prompt 缺失')
       return new Response(
         JSON.stringify({ error: 'Prompt is required' }),
-        { 
-          status: 400,
-          headers: { 'Content-Type': 'application/json' }
-        }
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
       )
     }
 
-    const response = await fetch(DEEPSEEK_API_URL_RUNTIME, {
+    console.log('📤 调用 DeepSeek API...')
+    const response = await fetch(DEEPSEEK_API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -105,28 +75,35 @@ export async function POST(request: NextRequest) {
 
     // 根据是否启用流式输出返回不同格式
     if (ENABLE_STREAMING) {
-      // 流式响应（本地开发）
+      // 真正的 SSE 流式响应（Vercel 环境）
+      console.log('🚀 启动 SSE 流式传输')
       const encoder = new TextEncoder()
       const stream = new ReadableStream({
         async start(controller) {
           const reader = response.body?.getReader()
           if (!reader) {
+            console.error('❌ 无响应体')
             controller.close()
             return
           }
 
           const decoder = new TextDecoder()
+          let chunkCount = 0
+          
           try {
             while (true) {
               const { done, value } = await reader.read()
-              if (done) break
+              if (done) {
+                console.log(`✅ 流式传输完成，共 ${chunkCount} 个数据块`)
+                break
+              }
 
               const chunk = decoder.decode(value, { stream: true })
               const lines = chunk.split('\n').filter(line => line.trim() !== '')
 
               for (const line of lines) {
                 if (line.startsWith('data: ')) {
-                  const data = line.slice(6)
+                  const data = line.slice(6).trim()
                   if (data === '[DONE]') {
                     controller.enqueue(encoder.encode('data: [DONE]\n\n'))
                     continue
@@ -136,16 +113,17 @@ export async function POST(request: NextRequest) {
                     const json = JSON.parse(data)
                     const content = json.choices?.[0]?.delta?.content
                     if (content) {
+                      chunkCount++
                       controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`))
                     }
                   } catch (e) {
-                    console.error('Error parsing SSE data:', e)
+                    console.error('❌ 解析 SSE 数据失败:', e, '数据:', data)
                   }
                 }
               }
             }
           } catch (error) {
-            console.error('Error reading stream:', error)
+            console.error('❌ 读取流失败:', error)
             controller.error(error)
           } finally {
             controller.close()
@@ -161,7 +139,8 @@ export async function POST(request: NextRequest) {
         },
       })
     } else {
-      // 非流式响应（AWS Amplify 生产环境）
+      // 非流式响应（降级方案）
+      console.log('⚠️ 使用非流式响应')
       const data = await response.json()
       const content = data.choices?.[0]?.message?.content || ''
 
