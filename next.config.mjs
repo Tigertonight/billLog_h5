@@ -11,16 +11,9 @@ const nextConfig = {
       },
     ],
   },
-  // 显式声明服务端环境变量
-  serverRuntimeConfig: {
-    DEEPSEEK_API_KEY: process.env.DEEPSEEK_API_KEY,
-    GLM_API_KEY: process.env.GLM_API_KEY,
-  },
-  // 确保环境变量在所有服务端路由中可用
-  env: {
-    DEEPSEEK_API_KEY: process.env.DEEPSEEK_API_KEY,
-    GLM_API_KEY: process.env.GLM_API_KEY,
-  },
+  // Vercel 原生支持环境变量，无需额外配置
+  // 服务端环境变量通过 process.env 自动可用
+  // 客户端环境变量需要 NEXT_PUBLIC_ 前缀
 }
 
 export default nextConfig
